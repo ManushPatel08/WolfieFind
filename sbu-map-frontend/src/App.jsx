@@ -208,7 +208,7 @@ function App() {
            }
            setIsLoading(false);
            // --- END OF CHANGE ---
-          )
+        })
           .catch(error => {
             // This catch block now only handles errors from find-closest
             console.error('Error finding resource:', error);
