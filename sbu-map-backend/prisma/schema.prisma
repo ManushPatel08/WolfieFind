@@ -15,17 +15,18 @@ datasource db {
 // ----------------------------------------------
 
 model Building {
-  id          Int        @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
   campus_area String?
   entrances   Entrance[]
   resources   Resource[]
+  submissions Submission[]
 
   @@map("buildings")
 }
 
 model Entrance {
-  id          Int      @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   building_id Int
   name        String?
   lat         Decimal
@@ -39,46 +40,62 @@ model Resource {
   id          Int       @id @default(autoincrement())
   name        String
   category    String
-  lat         Decimal
-  lon         Decimal
+  
+  // --- CHANGES ---
+  // Lat/Lon are now optional
+  lat         Decimal?
+  lon         Decimal?
+  // --- END CHANGES ---
+
   building_id Int?
   floor       String?
   description String?
   building    Building? @relation(fields: [building_id], references: [id], onDelete: SetNull)
 
+  // This constraint enforces "1 category per building" for indoor resources.
+  // Note: This works because outdoor resources will have building_id = null.
+  @@unique([category, building_id])
+
   @@map("resources")
 }
 
 model Submission {
-  id                     Int       @id @default(autoincrement())
-  submitter_id           String
-  submitter_name         String?
-  created_at             DateTime  @default(now())
-  category               String
-  lat                    Decimal
-  lon                    Decimal
-  building_name_suggestion String?
-  description            String?
-  status                 String    @default("pending") // 'pending', 'approved', 'rejected'
-  votes                  Vote[]
-  comments               Comment[]
+  id               Int       @id @default(autoincrement())
+  submitter_id     String
+  submitter_name   String?
+  created_at       DateTime  @default(now())
+  category         String
 
+  // --- CHANGES ---
+  // Lat/Lon are now optional
+  lat              Decimal?
+  lon              Decimal?
+  // --- END CHANGES ---
+
+  description      String?
+  building_id      Int?
+  status           String    @default("pending") // 'pending', 'verified', 'rejected'
+  building         Building? @relation(fields: [building_id], references: [id], onDelete: SetNull)
+  votes            Vote[]
+  comments         Comment[]
+
+  @@index([category, building_id, status])
   @@map("submissions")
 }
 
 model Vote {
-  id            Int        @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   submission_id Int
   user_id       String // Auth0 ID
   vote_type     Int // 1 for upvote, -1 for downvote
   submission    Submission @relation(fields: [submission_id], references: [id], onDelete: Cascade)
 
-  @@unique([submission_id, user_id]) // A user can only vote once per submission
+  @@unique([submission_id, user_id])
   @@map("votes")
 }
 
 model Comment {
-  id            Int        @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   submission_id Int
   user_id       String // Auth0 ID
   user_name     String?

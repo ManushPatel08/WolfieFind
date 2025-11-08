@@ -2,7 +2,7 @@
  * Calculates the distance between two GPS coordinates in kilometers
  * using the Haversine formula.
  */
-function calculateDistance(lat1, lon1, lat2, lon2) {
+export function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371; // Radius of the Earth in km
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
@@ -28,28 +28,22 @@ export function findClosest(userLocation, resources) {
   let closestLocation = null;
 
   for (const resource of resources) {
-    // Note: Prisma returns lat/lon as Decimal objects, so we convert to Number
-    const resourceLat = Number(resource.lat);
-    const resourceLon = Number(resource.lon);
     
-    // Check if the resource is outdoors (no building_id)
-    if (!resource.building) {
-      const distance = calculateDistance(
-        userLocation.lat, userLocation.lon,
-        resourceLat, resourceLon
-      );
+    // --- LOGIC CHANGE ---
 
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestItem = resource;
-        closestLocation = { lat: resourceLat, lon: resourceLon };
-      }
-    } else {
+    // Case 1: INDOOR resource. Path to the building entrance.
+    // It has a building, but lat/lon are null.
+    if (resource.building) {
       // Resource is inside a building. We must find the closest ENTRANCE.
+      if (!resource.building.entrances || resource.building.entrances.length === 0) {
+        // Skip this resource if its building has no registered entrances
+        continue;
+      }
+
       for (const entrance of resource.building.entrances) {
         const entranceLat = Number(entrance.lat);
         const entranceLon = Number(entrance.lon);
-        
+
         const distance = calculateDistance(
           userLocation.lat, userLocation.lon,
           entranceLat, entranceLon
@@ -62,12 +56,30 @@ export function findClosest(userLocation, resources) {
           closestLocation = { lat: entranceLat, lon: entranceLon };
         }
       }
+    } 
+    // Case 2: OUTDOOR resource. Path to the resource itself.
+    // It has lat/lon, but no building.
+    else if (resource.lat && resource.lon) {
+      const resourceLat = Number(resource.lat);
+      const resourceLon = Number(resource.lon);
+
+      const distance = calculateDistance(
+        userLocation.lat, userLocation.lon,
+        resourceLat, resourceLon
+      );
+
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestItem = resource;
+        closestLocation = { lat: resourceLat, lon: resourceLon };
+      }
     }
+    // --- END LOGIC CHANGE ---
   }
 
   return {
     resource: closestItem,
-    location: closestLocation,
+    location: closestLocation, // This is now either an entrance (indoor) or the spot (outdoor)
     distance: closestDistance,
   };
 }

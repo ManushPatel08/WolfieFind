@@ -1,12 +1,9 @@
-// C:\Users\dell\Desktop\WolfieFind\sbu-map-frontend\src\App.jsx
-// (Updated file)
-
 import { Submissions } from './Submissions.jsx';
 import { NewSubmissionForm } from './NewSubmissionForm.jsx';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth0 } from '@auth0/auth0-react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet'; // GeoJSON removed
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default Leaflet icon
@@ -17,20 +14,41 @@ let DefaultIcon = L.icon({ iconUrl: icon, shadowUrl: iconShadow, iconAnchor: [12
 L.Marker.prototype.options.icon = DefaultIcon;
 // ---
 
+// --- GraphHopper API Configuration ---
+const GRAPHHOPPER_API_KEY = '937d08ae-17e2-4a0d-8360-e3a5e90321ff';
+const GRAPHHOPPER_API_URL = 'https://graphhopper.com/api/1/route';
+// ---
+
 // Stony Brook University coordinates
 const SBU_CENTER = [40.914, -73.123];
 
+// --- Category Definitions ---
+const INDOOR_CATEGORIES = [
+  'printer', 'drinking_water_filler', 'toilets', 'computer_labs', 'pantry',
+  'game_room', 'gender_neutral_bathrooms', 'parking_service_desk',
+  'id_card_desk', 'charging_spots', 'vending_machine' // <-- ADDED
+];
+const OUTDOOR_CATEGORIES = [
+  'bench', 'bus_stops', 'foodtruck_locations', 'restaurants',
+  'gym', 'photographic_spots'
+];
+const ALL_CATEGORIES = [
+  { group: "Indoor", items: INDOOR_CATEGORIES },
+  { group: "Outdoor", items: OUTDOOR_CATEGORIES }
+];
+// ---
 
 // Map Click Handler Component
 function MapClickHandler({ onMapClick }) {
   useMapEvents({
     click(e) {
-      onMapClick(e.latlng); // e.latlng is { lat, lng }
+      onMapClick(e.latlng);
     },
   });
   return null;
 }
 
+// --- REMOVED RoutePath Component ---
 
 function App() {
   const {
@@ -42,22 +60,102 @@ function App() {
   } = useAuth0();
 
   const [userLocation, setUserLocation] = useState(null);
-  const [closestPrinter, setClosestPrinter] = useState(null);
+  const [closestResource, setClosestResource] = useState(null);
+  
+  // --- NEW GraphHopper State ---
+  const [routeLine, setRouteLine] = useState(null); // This will hold the Leaflet polyline layer
+  const [routeDetails, setRouteDetails] = useState(null); // { distance, duration }
+  // ---
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [mapCenter, setMapCenter] = useState(SBU_CENTER);
   const mapRef = useRef();
   const [newSubmissionLocation, setNewSubmissionLocation] = useState(null);
+  const [submissionSuccess, setSubmissionSuccess] = useState(0);
+  const [searchCategory, setSearchCategory] = useState('printer');
 
-  // Auth useEffect (no changes)
+  // Auth useEffect
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
       loginWithRedirect();
     }
   }, [isAuthLoading, isAuthenticated, loginWithRedirect]);
 
-  // findNearestPrinter function (no changes)
-  const findNearestPrinter = () => {
+  // --- NEW: Helper function to clear the route ---
+  const clearRoute = () => {
+    if (routeLine && mapRef.current) {
+      mapRef.current.removeLayer(routeLine);
+    }
+    setRouteLine(null);
+    setRouteDetails(null);
+  };
+
+  // --- NEW: Format duration (milliseconds to human-readable) ---
+  function formatDuration(milliseconds) {
+    const totalMinutes = Math.round(milliseconds / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else {
+      return `${minutes}m`;
+    }
+  }
+
+  // --- NEW: Calculate route using GraphHopper API ---
+  const calculateGraphHopperRoute = async (start, end) => {
+    // start and end are { lat, lon }
+    const url = `${GRAPHHOPPER_API_URL}?point=${start.lat},${start.lon}&point=${end.lat},${end.lon}&profile=foot&locale=en&points_encoded=false&key=${GRAPHHOPPER_API_KEY}`;
+    
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.paths && data.paths.length > 0) {
+        displayGraphHopperRoute(data.paths[0]);
+      } else {
+        throw new Error('No route found');
+      }
+    } catch (error) {
+      console.error('Error calculating route:', error);
+      setError('Error: Could not calculate route');
+    }
+  };
+
+  // --- NEW: Display route on map ---
+  const displayGraphHopperRoute = (route) => {
+    // Extract coordinates (GraphHopper returns [lng, lat], Leaflet needs [lat, lng])
+    const coordinates = route.points.coordinates.map(coord => [coord[1], coord[0]]);
+    
+    // Clear previous route
+    clearRoute();
+    
+    const newRouteLine = L.polyline(coordinates, {
+      color: '#0000FF', // Blue
+      weight: 5,
+      opacity: 0.7,
+      lineJoin: 'round'
+    }).addTo(mapRef.current);
+    
+    // Fit map to show entire route
+    mapRef.current.fitBounds(newRouteLine.getBounds(), { padding: [50, 50] });
+    
+    // Update info panel
+    const distance = (route.distance / 1000).toFixed(2); // Convert to km
+    const duration = formatDuration(route.time);
+    
+    setRouteDetails({ distance, duration });
+    setRouteLine(newRouteLine); // Save the layer to state
+  };
+
+  // findNearestResource function
+  const findNearestResource = () => {
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by your browser");
       return;
@@ -65,44 +163,60 @@ function App() {
 
     setIsLoading(true);
     setError(null);
-    setClosestPrinter(null);
+    setClosestResource(null);
+    clearRoute(); // Clear old route
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
         const location = { lat: latitude, lon: longitude };
-        setUserLocation(location); // This now holds {lat, lon}
+        setUserLocation(location);
 
         const newCenter = [latitude, longitude];
         setMapCenter(newCenter);
         if (mapRef.current) {
           mapRef.current.flyTo(newCenter, 16);
         }
-        
+
         console.log('User location:', location);
 
+        // 1. Find the closest resource
         axios.get('http://localhost:3001/api/find-closest', {
           params: {
-            category: 'printer',
+            category: searchCategory,
             lat: latitude,
             lon: longitude
           }
         })
-        .then(response => {
-          setClosestPrinter(response.data);
-          console.log('Found closest printer:', response.data);
-          setIsLoading(false);
-          
-          const printerLoc = response.data.location;
-          if (mapRef.current) {
-            mapRef.current.flyTo([printerLoc.lat, printerLoc.lon], 17);
-          }
-        })
-        .catch(error => {
-          console.error('Error finding printer:', error);
-          setError(error.response ? error.response.data.error : 'Network error');
-          setIsLoading(false);
-        });
+          .then(response => {
+            const closest = response.data;
+            setClosestResource(closest);
+            console.log(`Found closest ${searchCategory}:`, closest);
+
+            const resourceLoc = closest.location; // This is the entrance or outdoor spot
+            if (mapRef.current) {
+              mapRef.current.flyTo([resourceLoc.lat, resourceLoc.lon], 17);
+            }
+
+            // --- THIS IS THE CHANGE ---
+            // 2. Get the path using GraphHopper
+            //    Pass user location (start) and resource location (end)
+            calculateGraphHopperRoute(location, resourceLoc);
+            setIsLoading(false);
+            // --- END OF CHANGE ---
+          })
+          .catch(error => {
+            // This catch block now only handles errors from find-closest
+            console.error('Error finding resource:', error);
+            const errorMsg = error.response ? error.response.data.error : 'Network error';
+            
+            if (error.response && error.response.status === 404) {
+              setError(`No verified ${searchCategory}s found near you.`);
+            } else {
+              setError(errorMsg);
+            }
+            setIsLoading(false);
+          });
       },
       () => {
         setError("Unable to retrieve your location. Please allow location access.");
@@ -111,29 +225,20 @@ function App() {
     );
   };
 
-  // --- THIS IS THE FIX ---
-  // This function will now get the location itself
+  // handleUseMyLocation function
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by your browser");
       return;
     }
-    
     setError(null);
-    setIsLoading(true); // Show loading feedback
-
+    setIsLoading(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        // Convert {lat, lon} from GPS to {lat, lng} for Leaflet
         const leafletLocation = { lat: latitude, lng: longitude };
-        
         setNewSubmissionLocation(leafletLocation);
-        
-        // Also update the main userLocation state
-        setUserLocation({ lat: latitude, lon: longitude }); 
-        
-        // Fly map to that location
+        setUserLocation({ lat: latitude, lon: longitude });
         if (mapRef.current) {
           mapRef.current.flyTo([latitude, longitude], 17);
         }
@@ -145,8 +250,6 @@ function App() {
       }
     );
   };
-  // --- END OF FIX ---
-
 
   if (isAuthLoading || !isAuthenticated) {
     return <div>Loading Application...</div>;
@@ -156,7 +259,7 @@ function App() {
   return (
     <div style={{ padding: '20px', textAlign: 'left' }}>
 
-      {/* Auth Header (no changes) */}
+      {/* Auth Header */}
       <div style={{ float: 'right' }}>
         <span>Hello, {user.name}</span>
         <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
@@ -166,39 +269,47 @@ function App() {
 
       <h1>WolfieFind</h1>
 
+      {/* MapContainer */}
       <MapContainer
         ref={mapRef}
         center={mapCenter}
         zoom={15}
-        style={{ height: '400px', width: '100%' }}
+        style={{ height: '600px', width: '100%' }}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-
-        {/* Map Click Handler (no changes) */}
+        {/* --- REMOVED <RoutePath /> --- */}
         <MapClickHandler onMapClick={setNewSubmissionLocation} />
-
-        {/* User Marker (no changes) */}
+        
+        {/* User Marker */}
         {userLocation && (
           <Marker position={[userLocation.lat, userLocation.lon]}>
             <Popup>Your Location</Popup>
           </Marker>
         )}
 
-        {/* Printer Marker (no changes) */}
-        {closestPrinter && (
-          <Marker position={[closestPrinter.location.lat, closestPrinter.location.lon]}>
+        {/* Closest Resource Marker (Popup updated) */}
+        {closestResource && (
+          <Marker position={[closestResource.location.lat, closestResource.location.lon]}>
             <Popup>
-              <b>{closestPrinter.resource.name}</b><br />
-              {closestPrinter.resource.description}<br />
-              ~{closestPrinter.distance.toFixed(2)} km away
+              <b style={{ textTransform: 'capitalize' }}>
+                {closestResource.resource.category.replace(/_/g, ' ')}
+              </b>
+              <br />
+              {closestResource.resource.description || closestResource.resource.name}
+              <br />
+              <span style={{ fontSize: '0.9em', color: '#555' }}>
+                {closestResource.resource.building?.name || 'Outdoor Location'}
+                <br />
+                ~{closestResource.distance.toFixed(2)} km away
+              </span>
             </Popup>
           </Marker>
         )}
 
-        {/* New Submission Marker (no changes) */}
+        {/* New Submission Marker */}
         {newSubmissionLocation && (
           <Marker
             position={newSubmissionLocation}
@@ -212,41 +323,70 @@ function App() {
             <Popup>New Submission Location</Popup>
           </Marker>
         )}
-
       </MapContainer>
 
-      {/* Find Printer Button (no changes) */}
-      <button onClick={findNearestPrinter} disabled={isLoading} style={{ marginTop: '10px' }}>
-        {isLoading ? 'Finding...' : 'Find Nearest Printer'}
-      </button>
+      {/* Category Selector Dropdown */}
+      <div style={{ marginTop: '10px' }}>
+        <label htmlFor="category-select">Find nearest: </label>
+        <select
+          id="category-select"
+          value={searchCategory}
+          onChange={e => setSearchCategory(e.target.value)}
+          style={{ marginRight: '10px' }}
+        >
+          {ALL_CATEGORIES.map(group => (
+            <optgroup label={group.group} key={group.group}>
+              {group.items.map(item => (
+                <option key={item} value={item}>
+                  {item.replace(/_/g, ' ')}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+          <option value="other">Other</option>
+        </select>
 
-      {/* Error Display (no changes) */}
+        {/* Dynamic Button */}
+        <button onClick={findNearestResource} disabled={isLoading}>
+          {isLoading ? 'Finding...' : `Find Nearest ${searchCategory.replace(/_/g, ' ')} & Show Path`}
+        </button>
+      </div>
+
+      {/* Error Display */}
       {error && (
         <p style={{ color: 'red' }}>Error: {error}</p>
       )}
 
-      {/* Printer Results (no changes) */}
-      {closestPrinter && (
+      {/* --- MODIFIED RESULTS BOX (for GraphHopper) --- */}
+      {closestResource && (
         <div style={{ marginTop: '20px', border: '1px solid #ccc', padding: '10px' }}>
-          <h3>Closest Printer Found!</h3>
-          <p><b>Name:</b> {closestPrinter.resource.name}</p>
-          <p><b>Building:</b> {closestPrinter.resource.building?.name || 'Outdoors'}</p>
-          <p><b>Distance:</b> {closestPrinter.distance.toFixed(2)} km away</p>
+          <h3>Closest {searchCategory.replace(/_/g, ' ')} Found!</h3>
+          <p><b>{closestResource.resource.building?.name || closestResource.resource.name}</b></p>
+          <p><b>Description:</b> {closestResource.resource.description || 'N/A'}</p>
+          <p><b>Distance (as crow flies):</b> {closestResource.distance.toFixed(2)} km away (to {closestResource.resource.building ? 'entrance' : 'location'})</p>
+          
+          {/* New Route Details */}
+          {routeDetails && (
+            <>
+              <p style={{ color: 'blue' }}>Route path is now shown on the map!</p>
+              <p><b>Walk Distance:</b> {routeDetails.distance} km</p>
+              <p><b>Est. Walk Time:</b> {routeDetails.duration}</p>
+            </>
+          )}
         </div>
       )}
+      {/* --- END OF MODIFIED RESULTS BOX --- */}
 
-      {/* New Submission Form (no changes, just passing the updated handler) */}
+      {/* Forms and Submissions */}
       <NewSubmissionForm
         location={newSubmissionLocation}
-        onUseMyLocation={handleUseMyLocation} // Pass the new handler
+        onUseMyLocation={handleUseMyLocation}
         onSubmissionSuccess={() => {
-          setNewSubmissionLocation(null); // Clear the pin from map on success
-          // TODO: Refresh the submissions list
+          setNewSubmissionLocation(null);
+          setSubmissionSuccess(c => c + 1);
         }}
       />
-
-      {/* Submissions List (no changes) */}
-      <Submissions />
+      <Submissions key={submissionSuccess} />
 
     </div>
   );

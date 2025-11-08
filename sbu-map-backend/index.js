@@ -2,12 +2,31 @@ import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import 'dotenv/config';
-import { findClosest } from './utils.js';
+import axios from 'axios';
+import { findClosest, calculateDistance } from './utils.js';
 import { checkJwt } from './authMiddleware.js';
 
 const app = express();
 const port = process.env.PORT || 3001;
 const prisma = new PrismaClient();
+
+// --- Application Logic Constants ---
+const VERIFIED_THRESHOLD = 5;
+const INDOOR_CATEGORIES = [
+  'printer', 'drinking_water_filler', 'toilets', 'computer_labs', 'pantry',
+  'game_room', 'gender_neutral_bathrooms', 'parking_service_desk',
+  'id_card_desk', 'charging_spots', 'vending_machine' // Added vending_machine
+];
+const OUTDOOR_PROXIMITY_METERS = {
+  'bench': 20,
+  'bus_stops': 30,
+  'foodtruck_locations': 50,
+  'restaurants': 50,
+  'gym': 100,
+  'photographic_spots': 100,
+  'default': 30
+};
+// ---
 
 // Middleware
 app.use(cors());
@@ -17,7 +36,20 @@ app.use(express.json());
 // --- PUBLIC API ROUTES (NO LOGIN) ---
 // =======================================
 
-// GET all (approved) resources
+// GET /api/buildings
+app.get('/api/buildings', async (req, res) => {
+  try {
+    const buildings = await prisma.building.findMany({
+      orderBy: { name: 'asc' }
+    });
+    res.json(buildings);
+  } catch (error) {
+    console.error('Failed to fetch buildings:', error);
+    res.status(500).json({ error: 'Failed to fetch buildings' });
+  }
+});
+
+// GET /api/resources
 app.get('/api/resources', async (req, res) => {
   try {
     const resources = await prisma.resource.findMany({
@@ -32,7 +64,7 @@ app.get('/api/resources', async (req, res) => {
   }
 });
 
-// GET closest (approved) resource
+// GET /api/find-closest
 app.get('/api/find-closest', async (req, res) => {
   const { category, lat, lon } = req.query;
 
@@ -60,10 +92,15 @@ app.get('/api/find-closest', async (req, res) => {
     });
 
     if (resources.length === 0) {
-      return res.status(404).json({ error: 'No resources found for that category' });
+      return res.status(404).json({ error: 'No verified resources found for that category' });
     }
 
     const closestResult = findClosest(userLocation, resources);
+    
+    if (!closestResult.resource) {
+      return res.status(404).json({ error: 'No reachable resources found for that category.' });
+    }
+
     res.json(closestResult);
   } catch (error) {
     console.error('Failed to find closest resource:', error);
@@ -71,15 +108,16 @@ app.get('/api/find-closest', async (req, res) => {
   }
 });
 
-// GET all pending submissions (public)
+
+// GET /api/submissions
 app.get('/api/submissions', async (req, res) => {
   try {
-    // We sort by votes descending, so highest voted appears first
     const submissions = await prisma.submission.findMany({
       where: { status: 'pending' },
       include: {
         votes: true,
         comments: true,
+        building: true,
       },
       orderBy: {
         votes: {
@@ -94,42 +132,182 @@ app.get('/api/submissions', async (req, res) => {
   }
 });
 
+// --- REMOVED /api/get-path ENDPOINT ---
+// The frontend will now call GraphHopper directly.
+
 
 // =================================================
 // --- PROTECTED API ROUTES (LOGIN REQUIRED) ---
 // =================================================
 
+// Helper function to nullify duplicates
+async function nullifyDuplicates(submission) {
+  try {
+    if (submission.building_id) {
+      // INDOOR: Nullify all other pending submissions for this category+building
+      await prisma.submission.updateMany({
+        where: {
+          category: submission.category,
+          building_id: submission.building_id,
+          status: 'pending',
+          id: { not: submission.id }
+        },
+        data: { status: 'rejected' }
+      });
+      console.log(`Nullified indoor duplicates for ${submission.category} in building ${submission.building_id}`);
+
+    } else {
+      // OUTDOOR: Nullify pending submissions within proximity
+      const proximity = OUTDOOR_PROXIMITY_METERS[submission.category] || OUTDOOR_PROXIMITY_METERS.default;
+      const pendingSubmissions = await prisma.submission.findMany({
+        where: {
+          category: submission.category,
+          status: 'pending',
+          building_id: null,
+          id: { not: submission.id }
+        }
+      });
+
+      const submissionsToNullify = [];
+      for (const pending of pendingSubmissions) {
+        if (pending.lat && pending.lon && submission.lat && submission.lon) {
+          const distanceKm = calculateDistance(
+            Number(submission.lat), Number(submission.lon),
+            Number(pending.lat), Number(pending.lon)
+          );
+          if (distanceKm * 1000 < proximity) {
+            submissionsToNullify.push(pending.id);
+          }
+        }
+      }
+
+      if (submissionsToNullify.length > 0) {
+        await prisma.submission.updateMany({
+          where: { id: { in: submissionsToNullify } },
+          data: { status: 'rejected' }
+        });
+        console.log(`Nullified ${submissionsToNullify.length} outdoor duplicates for ${submission.category}`);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to nullify duplicates:", error);
+  }
+}
+
+// Helper function to verify a submission
+async function verifySubmission(submissionId) {
+  try {
+    const submission = await prisma.submission.findUnique({
+      where: { id: submissionId }
+    });
+
+    if (!submission || submission.status !== 'pending') {
+      console.log(`Submission ${submissionId} already processed or not found.`);
+      return;
+    }
+
+    // 1. Mark submission as 'verified'
+    await prisma.submission.update({
+      where: { id: submissionId },
+      data: { status: 'verified' }
+    });
+
+    // 2. Create a new Resource from this submission
+    const newResource = await prisma.resource.create({
+      data: {
+        name: `Verified ${submission.category.replace(/_/g, ' ')}`,
+        category: submission.category,
+        lat: submission.lat,
+        lon: submission.lon,
+        building_id: submission.building_id,
+        description: submission.description,
+      }
+    });
+    console.log(`Created new Resource ${newResource.id} from Submission ${submission.id}`);
+
+    // 3. Nullify other pending duplicates
+    await nullifyDuplicates(submission);
+
+  } catch (error)
+{    console.error(`Failed during verification for submission ${submissionId}:`, error);
+    if (error.code === 'P2002') {
+      console.log('Duplicate resource blocked by database constraint. This is expected.');
+      await nullifyDuplicates(submission);
+    }
+  }
+}
+
+
 // POST a new submission (PROTECTED)
-// checkJwt middleware will block requests without a valid token
 app.post('/api/submissions', checkJwt, async (req, res) => {
-  const submitterId = req.auth.payload.sub; // Get user ID from Auth0 token
+  const submitterId = req.auth.payload.sub;
   const {
     category,
-    lat,
-    lon,
+    lat, // Can be null
+    lon, // Can be null
     description,
-    buildingNameSuggestion,
-    submitterName, // Sent from frontend (can be null)
+    building_id, // Can be null
+    submitterName,
   } = req.body;
 
-  // --- THIS IS THE FIX ---
-  // We remove 'submitterName' from the required check,
-  // as the database schema allows it to be null.
-  if (!category || !lat || !lon || !submitterId) {
-    return res.status(400).json({ error: 'Missing required data' });
+  if (!category || !submitterId) {
+    return res.status(400).json({ error: 'Missing category or user ID' });
   }
-  // --- END OF FIX ---
+
+  const isIndoor = INDOOR_CATEGORIES.includes(category);
+  const parsedLat = lat ? parseFloat(lat) : null;
+  const parsedLon = lon ? parseFloat(lon) : null;
+  const parsedBuildingId = building_id ? parseInt(building_id) : null;
 
   try {
+    // --- VALIDATION & DUPLICATE CHECKS ---
+    if (isIndoor) {
+      if (!parsedBuildingId) {
+        return res.status(400).json({ error: 'A building must be selected for this indoor category.' });
+      }
+      
+      const existingResource = await prisma.resource.findFirst({
+        where: {
+          category: category,
+          building_id: parsedBuildingId
+        }
+      });
+      if (existingResource) {
+        return res.status(409).json({ error: 'A verified resource for this category already exists in this building.' });
+      }
+
+    } else { // OUTDOOR
+      if (!parsedLat || !parsedLon) {
+        return res.status(400).json({ error: 'A map location must be provided for outdoor categories.' });
+      }
+
+      const proximity = OUTDOOR_PROXIMITY_METERS[category] || OUTDOOR_PROXIMITY_METERS.default;
+      const existingResources = await prisma.resource.findMany({
+        where: { category: category, building_id: null }
+      });
+
+      for (const resource of existingResources) {
+        const distanceKm = calculateDistance(
+          parsedLat, parsedLon,
+          Number(resource.lat), Number(resource.lon)
+        );
+        if (distanceKm * 1000 < proximity) {
+          return res.status(409).json({ error: `A verified ${category} already exists ${Math.round(distanceKm * 1000)}m away.` });
+        }
+      }
+    }
+    // --- END DUPLICATE CHECKS ---
+
     const newSubmission = await prisma.submission.create({
       data: {
         submitter_id: submitterId,
-        submitter_name: submitterName, // This is fine if it's null
+        submitter_name: submitterName,
         category,
-        lat: parseFloat(lat),
-        lon: parseFloat(lon),
+        lat: isIndoor ? null : parsedLat,
+        lon: isIndoor ? null : parsedLon,
         description,
-        building_name_suggestion: buildingNameSuggestion,
+        building_id: isIndoor ? parsedBuildingId : null,
+        status: 'pending',
       },
     });
     res.status(201).json(newSubmission);
@@ -143,15 +321,22 @@ app.post('/api/submissions', checkJwt, async (req, res) => {
 app.post('/api/submissions/:id/vote', checkJwt, async (req, res) => {
   const userId = req.auth.payload.sub;
   const submissionId = parseInt(req.params.id);
-  const { voteType } = req.body; // 1 for upvote, -1 for downvote
+  const { voteType } = req.body;
 
   if (voteType !== 1 && voteType !== -1) {
     return res.status(400).json({ error: 'Invalid vote type' });
   }
 
   try {
-    // Use 'upsert' to create a new vote or update an existing one.
-    // This prevents a user from voting multiple times.
+    const submission = await prisma.submission.findUnique({
+      where: { id: submissionId },
+      select: { status: true }
+    });
+
+    if (!submission || submission.status !== 'pending') {
+      return res.status(400).json({ error: 'This submission is not active and can no longer be voted on.' });
+    }
+
     const newVote = await prisma.vote.upsert({
       where: {
         submission_id_user_id: {
@@ -159,23 +344,35 @@ app.post('/api/submissions/:id/vote', checkJwt, async (req, res) => {
           user_id: userId,
         },
       },
-      update: {
-        vote_type: voteType,
-      },
+      update: { vote_type: voteType },
       create: {
         submission_id: submissionId,
         user_id: userId,
         vote_type: voteType,
       },
     });
+
+    // Check for verification
+    const votes = await prisma.vote.findMany({
+      where: { submission_id: submissionId }
+    });
+    const totalVotes = votes.reduce((acc, vote) => acc + vote.vote_type, 0);
+
+    if (totalVotes >= VERIFIED_THRESHOLD) {
+      verifySubmission(submissionId).catch(console.error);
+    }
+
     res.status(201).json(newVote);
   } catch (error) {
     console.error('Failed to vote:', error);
+    if (error.code === 'P2002') {
+      return res.status(409).json({ error: 'You have already voted on this submission.' });
+    }
     res.status(500).json({ error: 'Failed to vote' });
   }
 });
 
-// POST a comment on a submission (PROTECTED)
+// POST /api/submissions/:id/comment
 app.post('/api/submissions/:id/comment', checkJwt, async (req, res) => {
   const userId = req.auth.payload.sub;
   const submissionId = parseInt(req.params.id);
@@ -206,7 +403,6 @@ app.get('/', (req, res) => {
   res.send('WolfieFind Backend is running!');
 });
 
-// Test protected route
 app.get('/api/protected', checkJwt, (req, res) => {
   res.json({
     message: 'Hello from a protected endpoint! You are authenticated.',
