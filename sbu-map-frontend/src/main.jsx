@@ -5,9 +5,9 @@ import App from './App.jsx';
 import 'leaflet/dist/leaflet.css';
 
 // --- Auth0 Configuration ---
-const AUTH0_DOMAIN = 'dev-ukm6j0dl4wc5piff.us.auth0.com';
-const AUTH0_CLIENT_ID = 'Mmg2Lh0bawdQKOKpDBqktJ3FslaAx8Bh';
-const AUTH0_AUDIENCE = 'https://api.wolfiefind.com';
+const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN;
+const AUTH0_CLIENT_ID = import.meta.env.VITE_AUTH0_CLIENT_ID;
+const AUTH0_AUDIENCE = import.meta.env.VITE_AUTH0_AUDIENCE;
 // ---
 
 ReactDOM.createRoot(document.getElementById('root')).render(

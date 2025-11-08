@@ -15,7 +15,7 @@ L.Marker.prototype.options.icon = DefaultIcon;
 // ---
 
 // --- GraphHopper API Configuration ---
-const GRAPHHOPPER_API_KEY = '937d08ae-17e2-4a0d-8360-e3a5e90321ff';
+const GRAPHHOPPER_API_KEY = import.meta.env.VITE_GRAPHHOPPER_API_KEY;
 const GRAPHHOPPER_API_URL = 'https://graphhopper.com/api/1/route';
 // ---
 
@@ -181,7 +181,7 @@ function App() {
         console.log('User location:', location);
 
         // 1. Find the closest resource
-        axios.get('http://localhost:3001/api/find-closest', {
+        axios.get('${import.meta.env.VITE_API_URL}/api/find-closest', {
           params: {
             category: searchCategory,
             lat: latitude,
