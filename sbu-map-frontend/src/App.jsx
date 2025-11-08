@@ -189,22 +189,26 @@ function App() {
           }
         })
           .then(response => {
-            const closest = response.data;
-            setClosestResource(closest);
-            console.log(`Found closest ${searchCategory}:`, closest);
+           const closest = response.data;
+           setClosestResource(closest);
+           console.log(`Found closest ${searchCategory}:`, closest);
 
-            const resourceLoc = closest.location; // This is the entrance or outdoor spot
-            if (mapRef.current) {
-              mapRef.current.flyTo([resourceLoc.lat, resourceLoc.lon], 17);
-            }
+           const resourceLoc = closest.location; // This is the entrance or outdoor spot
 
-            // --- THIS IS THE CHANGE ---
-            // 2. Get the path using GraphHopper
-            //    Pass user location (start) and resource location (end)
-            calculateGraphHopperRoute(location, resourceLoc);
-            setIsLoading(false);
-            // --- END OF CHANGE ---
-          })
+           // --- ADDED CHECK ---
+           if (resourceLoc && resourceLoc.lat && resourceLoc.lon) {
+             if (mapRef.current) {
+               mapRef.current.flyTo([resourceLoc.lat, resourceLoc.lon], 17);
+             }
+             // 2. Get the path using GraphHopper
+             calculateGraphHopperRoute(location, resourceLoc);
+           } else {
+             console.error("Resource found but it has no location data.", closest);
+             setError(`Found ${searchCategory} but it has no location data.`);
+           }
+           setIsLoading(false);
+           // --- END OF CHANGE ---
+          )
           .catch(error => {
             // This catch block now only handles errors from find-closest
             console.error('Error finding resource:', error);
@@ -291,7 +295,7 @@ function App() {
         )}
 
         {/* Closest Resource Marker (Popup updated) */}
-        {closestResource && (
+        {closestResource && closestResource.location && (
           <Marker position={[closestResource.location.lat, closestResource.location.lon]}>
             <Popup>
               <b style={{ textTransform: 'capitalize' }}>
