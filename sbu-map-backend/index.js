@@ -3,7 +3,7 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import 'dotenv/config';
 import { findClosest } from './utils.js';
-import { checkJwt } from './authMiddleware.js'; // <-- 1. IMPORT AUTH MIDDLEWARE
+import { checkJwt } from './authMiddleware.js';
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -109,7 +109,7 @@ app.post('/api/submissions', checkJwt, async (req, res) => {
     lon,
     description,
     buildingNameSuggestion,
-    submitterName, // Sent from frontend
+    submitterName, // Sent from frontend (can be null)
   } = req.body;
 
   // --- THIS IS THE FIX ---

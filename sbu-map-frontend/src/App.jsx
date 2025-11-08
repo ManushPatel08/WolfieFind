@@ -1,10 +1,12 @@
+// C:\Users\dell\Desktop\WolfieFind\sbu-map-frontend\src\App.jsx
+// (Updated file)
+
 import { Submissions } from './Submissions.jsx';
-import { NewSubmissionForm } from './NewSubmissionForm.jsx'; // 1. IMPORT
+import { NewSubmissionForm } from './NewSubmissionForm.jsx';
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth0 } from '@auth0/auth0-react';
-// 2. IMPORT useMapEvents
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet'; 
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default Leaflet icon
@@ -19,17 +21,14 @@ L.Marker.prototype.options.icon = DefaultIcon;
 const SBU_CENTER = [40.914, -73.123];
 
 
-// 3. CREATE MAP CLICK HANDLER COMPONENT
-// This is a small helper component that uses the useMapEvents hook
-// We'll render it *inside* the MapContainer
+// Map Click Handler Component
 function MapClickHandler({ onMapClick }) {
   useMapEvents({
     click(e) {
-      // e.latlng contains the lat and long (as { lat, lng })
-      onMapClick(e.latlng);
+      onMapClick(e.latlng); // e.latlng is { lat, lng }
     },
   });
-  return null; // It doesn't render anything visible
+  return null;
 }
 
 
@@ -46,20 +45,18 @@ function App() {
   const [closestPrinter, setClosestPrinter] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [mapCenter, setMapCenter] = useState(SBU_CENTER); 
+  const [mapCenter, setMapCenter] = useState(SBU_CENTER);
   const mapRef = useRef();
-
-  // 4. ADD NEW STATE for the submission pin
   const [newSubmissionLocation, setNewSubmissionLocation] = useState(null);
 
-  // ... (Your existing useEffect for auth is perfect) ...
+  // Auth useEffect (no changes)
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
       loginWithRedirect();
     }
   }, [isAuthLoading, isAuthenticated, loginWithRedirect]);
 
-  // ... (Your existing findNearestPrinter function is perfect) ...
+  // findNearestPrinter function (no changes)
   const findNearestPrinter = () => {
     if (!navigator.geolocation) {
       setError("Geolocation is not supported by your browser");
@@ -75,7 +72,7 @@ function App() {
         const { latitude, longitude } = position.coords;
         const location = { lat: latitude, lon: longitude };
         setUserLocation(location); // This now holds {lat, lon}
-        
+
         const newCenter = [latitude, longitude];
         setMapCenter(newCenter);
         if (mapRef.current) {
@@ -114,63 +111,83 @@ function App() {
     );
   };
 
-  // --- 5. ADD HANDLER for "Use My Location" button ---
+  // --- THIS IS THE FIX ---
+  // This function will now get the location itself
   const handleUseMyLocation = () => {
-    if (userLocation) {
-      // Convert {lat, lon} from GPS to {lat, lng} for Leaflet
-      setNewSubmissionLocation({ lat: userLocation.lat, lng: userLocation.lon });
-      // Fly map to that location
-      if (mapRef.current) {
-        mapRef.current.flyTo([userLocation.lat, userLocation.lon], 17);
-      }
-    } else {
-      // Ask user to get their location first
-      setError("Please click 'Find Nearest Printer' first to get your location.");
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser");
+      return;
     }
+    
+    setError(null);
+    setIsLoading(true); // Show loading feedback
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        // Convert {lat, lon} from GPS to {lat, lng} for Leaflet
+        const leafletLocation = { lat: latitude, lng: longitude };
+        
+        setNewSubmissionLocation(leafletLocation);
+        
+        // Also update the main userLocation state
+        setUserLocation({ lat: latitude, lon: longitude }); 
+        
+        // Fly map to that location
+        if (mapRef.current) {
+          mapRef.current.flyTo([latitude, longitude], 17);
+        }
+        setIsLoading(false);
+      },
+      () => {
+        setError("Unable to retrieve your location. Please allow location access.");
+        setIsLoading(false);
+      }
+    );
   };
-  // --- END OF NEW HANDLER ---
+  // --- END OF FIX ---
 
 
   if (isAuthLoading || !isAuthenticated) {
     return <div>Loading Application...</div>;
   }
 
-  // --- 6. UPDATE THE UI ---
+  // --- Main App UI ---
   return (
     <div style={{ padding: '20px', textAlign: 'left' }}>
-      
-      {/* ... (Your existing auth header is perfect) ... */}
+
+      {/* Auth Header (no changes) */}
       <div style={{ float: 'right' }}>
         <span>Hello, {user.name}</span>
         <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
           Log Out
         </button>
       </div>
-      
+
       <h1>WolfieFind</h1>
 
-      <MapContainer 
+      <MapContainer
         ref={mapRef}
-        center={mapCenter} 
-        zoom={15} 
+        center={mapCenter}
+        zoom={15}
         style={{ height: '400px', width: '100%' }}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        
-        {/* 7. ADD THE CLICK HANDLER to the map */}
+
+        {/* Map Click Handler (no changes) */}
         <MapClickHandler onMapClick={setNewSubmissionLocation} />
 
-        {/* Marker for User */}
+        {/* User Marker (no changes) */}
         {userLocation && (
           <Marker position={[userLocation.lat, userLocation.lon]}>
             <Popup>Your Location</Popup>
           </Marker>
         )}
 
-        {/* Marker for Printer */}
+        {/* Printer Marker (no changes) */}
         {closestPrinter && (
           <Marker position={[closestPrinter.location.lat, closestPrinter.location.lon]}>
             <Popup>
@@ -181,11 +198,11 @@ function App() {
           </Marker>
         )}
 
-        {/* 8. ADD MARKER for new submission */}
+        {/* New Submission Marker (no changes) */}
         {newSubmissionLocation && (
-          <Marker 
+          <Marker
             position={newSubmissionLocation}
-            draggable={true} // You can let them move it
+            draggable={true}
             eventHandlers={{
               dragend: (e) => {
                 setNewSubmissionLocation(e.target.getLatLng());
@@ -198,15 +215,17 @@ function App() {
 
       </MapContainer>
 
-      {/* ... (Your existing "Find Printer" button and results) ... */}
+      {/* Find Printer Button (no changes) */}
       <button onClick={findNearestPrinter} disabled={isLoading} style={{ marginTop: '10px' }}>
         {isLoading ? 'Finding...' : 'Find Nearest Printer'}
       </button>
 
+      {/* Error Display (no changes) */}
       {error && (
         <p style={{ color: 'red' }}>Error: {error}</p>
       )}
 
+      {/* Printer Results (no changes) */}
       {closestPrinter && (
         <div style={{ marginTop: '20px', border: '1px solid #ccc', padding: '10px' }}>
           <h3>Closest Printer Found!</h3>
@@ -216,17 +235,17 @@ function App() {
         </div>
       )}
 
-      {/* 9. RENDER THE NEW FORM */}
-      <NewSubmissionForm 
+      {/* New Submission Form (no changes, just passing the updated handler) */}
+      <NewSubmissionForm
         location={newSubmissionLocation}
-        onUseMyLocation={handleUseMyLocation} // Pass the handler
+        onUseMyLocation={handleUseMyLocation} // Pass the new handler
         onSubmissionSuccess={() => {
           setNewSubmissionLocation(null); // Clear the pin from map on success
           // TODO: Refresh the submissions list
         }}
       />
-      
-      {/* 10. RENDER THE SUBMISSIONS LIST (already done) */}
+
+      {/* Submissions List (no changes) */}
       <Submissions />
 
     </div>
