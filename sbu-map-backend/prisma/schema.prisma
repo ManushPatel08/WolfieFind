@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------
+// DATABASE MODELS
+// ----------------------------------------------
+
+model Building {
+  id          Int        @id @default(autoincrement())
+  name        String
+  campus_area String?
+  entrances   Entrance[]
+  resources   Resource[]
+
+  @@map("buildings")
+}
+
+model Entrance {
+  id          Int      @id @default(autoincrement())
+  building_id Int
+  name        String?
+  lat         Decimal
+  lon         Decimal
+  building    Building @relation(fields: [building_id], references: [id], onDelete: Cascade)
+
+  @@map("entrances")
+}
+
+model Resource {
+  id          Int       @id @default(autoincrement())
+  name        String
+  category    String
+  lat         Decimal
+  lon         Decimal
+  building_id Int?
+  floor       String?
+  description String?
+  building    Building? @relation(fields: [building_id], references: [id], onDelete: SetNull)
+
+  @@map("resources")
+}
+
+model Submission {
+  id                     Int       @id @default(autoincrement())
+  submitter_id           String
+  submitter_name         String?
+  created_at             DateTime  @default(now())
+  category               String
+  lat                    Decimal
+  lon                    Decimal
+  building_name_suggestion String?
+  description            String?
+  status                 String    @default("pending") // 'pending', 'approved', 'rejected'
+  votes                  Vote[]
+  comments               Comment[]
+
+  @@map("submissions")
+}
+
+model Vote {
+  id            Int        @id @default(autoincrement())
+  submission_id Int
+  user_id       String // Auth0 ID
+  vote_type     Int // 1 for upvote, -1 for downvote
+  submission    Submission @relation(fields: [submission_id], references: [id], onDelete: Cascade)
+
+  @@unique([submission_id, user_id]) // A user can only vote once per submission
+  @@map("votes")
+}
+
+model Comment {
+  id            Int        @id @default(autoincrement())
+  submission_id Int
+  user_id       String // Auth0 ID
+  user_name     String?
+  comment       String
+  created_at    DateTime   @default(now())
+  submission    Submission @relation(fields: [submission_id], references: [id], onDelete: Cascade)
+
+  @@map("comments")
+}

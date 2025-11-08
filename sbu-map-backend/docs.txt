@@ -1,0 +1,7 @@
+neon:-
+Connection String- postgresql://neondb_owner:npg_xp7MgYI0BNSz@ep-lingering-hill-ad0bwcol-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+
+auth0:-
+domain: dev-ukm6j0dl4wc5piff.us.auth0.com
+client id: Mmg2Lh0bawdQKOKpDBqktJ3FslaAx8Bh
+client secret: WC9kEpM0MBkb7isqgzXf4OUQfFYxifXYrwNSJcwmAEyO14X1PbB60nquSonDxlCa
