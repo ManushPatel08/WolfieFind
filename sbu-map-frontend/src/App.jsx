@@ -181,7 +181,7 @@ function App() {
         console.log('User location:', location);
 
         // 1. Find the closest resource
-        axios.get('${import.meta.env.VITE_API_URL}/api/find-closest', {
+        axios.get(`${import.meta.env.VITE_API_URL}/api/find-closest`, {
           params: {
             category: searchCategory,
             lat: latitude,
