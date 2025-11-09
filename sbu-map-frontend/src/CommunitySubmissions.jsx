@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+//
+// FIX: Changed API_URL to API_BASE_URL and adjusted fallback.
+//
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export function CommunitySubmissions() {
   const [submissions, setSubmissions] = useState([]);
@@ -11,7 +14,10 @@ export function CommunitySubmissions() {
   const { getAccessTokenSilently } = useAuth0();
 
   const fetchSubmissions = () => {
-    axios.get(`${API_URL}/submissions`)
+    //
+    // FIX: Add /api prefix to the request URL
+    //
+    axios.get(`${API_BASE_URL}/api/submissions`)
       .then(res => {
         setSubmissions(res.data);
       })
@@ -30,7 +36,11 @@ export function CommunitySubmissions() {
       setError(null);
       setMessage('Submitting vote...');
       const token = await getAccessTokenSilently();
-      await axios.post(`${API_URL}/submissions/${id}/vote`, { voteType }, {
+      
+      //
+      // FIX: Add /api prefix to the request URL
+      //
+      await axios.post(`${API_BASE_URL}/api/submissions/${id}/vote`, { voteType }, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setMessage('Vote submitted! Refreshing list...');

@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+//
+// FIX: Changed API_URL to API_BASE_URL and adjusted fallback.
+//
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const INDOOR_CATEGORIES = [
   'printer', 'drinking_water_filler', 'toilets', 'computer_labs', 'pantry',
@@ -37,7 +40,10 @@ export function AddResourceForm({ location, onUseMyLocation, onSubmissionSuccess
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    axios.get(`${API_URL}/buildings`)
+    //
+    // FIX: Add /api prefix to the request URL
+    //
+    axios.get(`${API_BASE_URL}/api/buildings`)
       .then(res => {
         setBuildings(res.data);
       })
@@ -76,7 +82,10 @@ export function AddResourceForm({ location, onUseMyLocation, onSubmissionSuccess
         lon: isIndoor ? null : location.lng,
       };
 
-      await axios.post(`${API_URL}/submissions`, payload, {
+      //
+      // FIX: Add /api prefix to the request URL
+      //
+      await axios.post(`${API_BASE_URL}/api/submissions`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

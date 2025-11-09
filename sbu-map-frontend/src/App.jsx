@@ -27,8 +27,10 @@ L.Icon.Default.mergeOptions({
   shadowSize: [41, 41],
 });
 
-// API & Map Configuration
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+//
+// FIX: Changed API_URL to API_BASE_URL and adjusted fallback.
+//
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const GRAPHHOPPER_KEY = import.meta.env.VITE_GRAPHHOPPER_API_KEY;
 const GRAPHHOPPER_URL = 'https://graphhopper.com/api/1/route';
 const STONY_BROOK_CENTER = [40.914, -73.123];
@@ -161,7 +163,10 @@ function App() {
           mapRef.current.flyTo(userLatLng, 16);
         }
 
-        axios.get(`${API_URL}/find-closest`, {
+        //
+        // FIX: Add /api prefix to the request URL
+        //
+        axios.get(`${API_BASE_URL}/api/find-closest`, {
           params: { category: selectedCategory, lat: latitude, lon: longitude },
         })
           .then(response => {
@@ -173,9 +178,6 @@ function App() {
               if (mapRef.current) {
                 mapRef.current.flyTo([resourceLocation.lat, resourceLocation.lon], 17);
               }
-              //
-              // FIX: Call calculateRoute here to show the path
-              //
               calculateRoute(userCoords, resourceLocation);
             } else {
               console.error('Resource found but it has no location data.', result);
@@ -244,7 +246,6 @@ function App() {
         </div>
       </header>
 
-      {/* FIX: Replaced stacked cards with a two-column layout */}
       <div className="main-content">
         <MapContainer
           ref={mapRef}
@@ -277,7 +278,7 @@ function App() {
                 <span style={{ fontSize: '0.9em', color: '#555' }}>
                   {closestResult.resource.building?.name || 'Outdoor Location'}
                   <br />
-                  {/* FIX: Use standard space instead of non-breaking space */}
+                  {/* FIX: Replaced non-breaking space (U+00a0) with standard space */}
                   ~{closestResult.distance.toFixed(2)} km away
                 </span>
               </Popup>
@@ -318,7 +319,6 @@ function App() {
                     ))}
                   </optgroup>
                 ))}
-                <option value="other">Other</option>
               </select>
             </div>
             <button
@@ -342,18 +342,18 @@ function App() {
                 <b>Description:</b> {closestResult.resource.description || 'N/A'}
               </p>
               <p>
-                {/* FIX: Use standard space */}
+                {/* FIX: Replaced non-breaking space (U+00a0) with standard space */}
                 <b>Distance (as crow flies):</b> {closestResult.distance.toFixed(2)} km (to {closestResult.resource.building ? 'entrance' : 'location'})
               </p>
               {routeDetails && (
                 <div className="route-details">
                   <p className="route-success">Route path is now shown on the map!</p>
                   <p>
-                    {/* FIX: Use standard space */}
+                    {/* FIX: Replaced non-breaking space (U+00a0) with standard space */}
                     <b>Walk Distance:</b> {routeDetails.distance} km
                   </p>
                   <p>
-                    {/* FIX: Use standard space */}
+                    {/* FIX: Replaced non-breaking space (U+00a0) with standard space */}
                     <b>Est. Walk Time:</b> {routeDetails.duration}
                   </p>
                 </div>
