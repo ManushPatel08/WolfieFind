@@ -38,6 +38,16 @@ body {
   min-height: 100vh;
 }
 
+  /* Prevent horizontal scroll on mobile caused by wide header elements */
+  html, body {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Use border-box everywhere to avoid padding causing overflow */
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
 #root {
   max-width: 100%;
   margin: 0 auto;
@@ -45,11 +55,13 @@ body {
   text-align: left;
   width: 100%;
   box-sizing: border-box;
+    flex-wrap: wrap; /* allow items to wrap on small screens */
 }
 
 /* --- Layout Enhancements --- */
 .app-container {
   display: flex;
+    flex-wrap: wrap; /* ensure overflow doesn't cause horizontal scroll */
   flex-direction: column;
   width: 100%;
 }
@@ -58,6 +70,7 @@ body {
   border-bottom: 1px solid var(--border-color);
   justify-content: space-between;
   align-items: center;
+    width: 100%;
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   display: flex;
@@ -380,6 +393,11 @@ input[type="text"]:focus {
     gap: 0.75rem;
   }
 
+  /* reduce root padding on small screens to avoid additional horizontal space */
+  #root {
+    padding: 1rem;
+  }
+
   /* Make cards comfortable for touch */
   .card {
     border-radius: 10px;
@@ -408,6 +426,8 @@ input[type="text"]:focus {
     border-color: var(--sbu-red);
     padding: .6em 1em;
     font-weight: 600;
+    flex: 0 0 auto; /* avoid growing and causing overflow */
+    white-space: nowrap;
   }
 
   /* Reduce header height & font sizes on mobile */
