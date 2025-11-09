@@ -9,3 +9,5 @@ client secret: WC9kEpM0MBkb7isqgzXf4OUQfFYxifXYrwNSJcwmAEyO14X1PbB60nquSonDxlCa
 gcp:-
 project_id: wolfiefind-477622
 Service URL: Service URL: https://wolfiefind-api-617202348897.us-east1.run.app
+
+auth0:-

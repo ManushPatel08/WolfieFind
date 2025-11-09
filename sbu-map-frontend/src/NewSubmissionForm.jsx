@@ -1,3 +1,5 @@
+// REPLACE: sbu-map-frontend/src/NewSubmissionForm.jsx
+
 import { useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import axios from 'axios';
@@ -8,7 +10,7 @@ const API_URL = `${import.meta.env.VITE_API_URL}/api`;
 const INDOOR_CATEGORIES = [
   'printer', 'drinking_water_filler', 'toilets', 'computer_labs', 'pantry',
   'game_room', 'gender_neutral_bathrooms', 'parking_service_desk',
-  'id_card_desk', 'charging_spots', 'vending_machine' // <-- ADDED
+  'id_card_desk', 'charging_spots', 'vending_machine'
 ];
 const OUTDOOR_CATEGORIES = [
   'bench', 'bus_stops', 'foodtruck_locations', 'restaurants',
@@ -52,7 +54,6 @@ export function NewSubmissionForm({ location, onUseMyLocation, onSubmissionSucce
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // New validation logic
     if (isIndoor && !buildingId) {
       setError("Please select a building for this indoor category.");
       return;
@@ -68,8 +69,6 @@ export function NewSubmissionForm({ location, onUseMyLocation, onSubmissionSucce
 
     try {
       const token = await getAccessTokenSilently();
-
-      // Send null for coordinates if indoor, and null for building if outdoor
       const submissionData = {
         category: category,
         description: description,
@@ -91,7 +90,6 @@ export function NewSubmissionForm({ location, onUseMyLocation, onSubmissionSucce
       );
 
       setMessage('Submission successful! Thank you for your contribution.');
-      // Clear the form
       setDescription('');
       setBuildingId('');
       setIsSubmitting(false);
@@ -108,96 +106,83 @@ export function NewSubmissionForm({ location, onUseMyLocation, onSubmissionSucce
     }
   };
 
-  // Dynamic validation for submit button
   const canSubmit = isIndoor ? !!buildingId : (!!location || category === 'other');
 
   return (
-    <div style={{ marginTop: '20px', borderTop: '2px solid #555', paddingTop: '20px' }}>
+    <div className="card form-card">
       <h2>Add a New Resource</h2>
-      <p>
+      <p style={{ marginTop: '-1rem', color: 'var(--text-color-light)'}}>
         {isIndoor
           ? "Select an indoor category and the building it's in."
           : "Select an outdoor category and pin its location on the map."}
       </p>
 
       <form onSubmit={handleSubmit}>
-
-        {/* Location section (for outdoor) */}
+        
         {!isIndoor && (
-          <div style={{ marginBottom: '10px' }}>
+          <div className="form-group location-group">
             <label>
               Selected Location:
-              <span style={{ fontWeight: 'bold', marginLeft: '10px' }}>
-                {location ? `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}` : ' (Click map to set)'}
+              <span>
+                {location ? <strong> {`${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`}</strong> : ' (Click map to set)'}
               </span>
             </label>
             <button
               type="button"
               onClick={onUseMyLocation}
-              style={{ marginLeft: '15px' }}
             >
               Use My Current Location
             </button>
           </div>
         )}
 
-        {/* Category Dropdown */}
-        <div style={{ marginBottom: '10px' }}>
-          <label>
-            Category:
-            <select value={category} onChange={e => setCategory(e.target.value)} style={{ marginLeft: '10px' }}>
-              {ALL_CATEGORIES.map(group => (
-                <optgroup label={group.group} key={group.group}>
-                  {group.items.map(item => (
-                    <option key={item} value={item}>
-                      {item.replace(/_/g, ' ')}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-              <option value="other">Other</option>
-            </select>
-          </label>
-        </div>
-
-        {/* Building Dropdown (for indoor) */}
-        {isIndoor && (
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Building (Required):
-              <select value={buildingId} onChange={e => setBuildingId(e.target.value)} required style={{ marginLeft: '10px' }}>
-                <option value="">-- Select a Building --</option>
-                {buildings.map(b => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
+        <div className="form-group">
+          <label htmlFor="submit-category">Category:</label>
+          <select id="submit-category" value={category} onChange={e => setCategory(e.target.value)}>
+            {ALL_CATEGORIES.map(group => (
+              <optgroup label={group.group} key={group.group}>
+                {group.items.map(item => (
+                  <option key={item} value={item}>
+                    {item.replace(/_/g, ' ')}
                   </option>
                 ))}
-              </select>
-            </label>
+              </optgroup>
+            ))}
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        {isIndoor && (
+          <div className="form-group">
+            <label htmlFor="submit-building">Building (Required):</label>
+            <select id="submit-building" value={buildingId} onChange={e => setBuildingId(e.target.value)} required>
+              <option value="">-- Select a Building --</option>
+              {buildings.map(b => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
-        {/* Description */}
-        <div style={{ marginBottom: '10px' }}>
-          <label>
-            Description (e.g., "2nd floor, by room 210"):
-            <br />
-            <input
-              type="text"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              style={{ width: '300px' }}
-            />
-          </label>
+        <div className="form-group">
+          <label htmlFor="submit-description">Description (e.g., "2nd floor, by room 210"):</label>
+          <input
+            id="submit-description"
+            type="text"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            style={{ width: '100%' }}
+          />
         </div>
 
-        {/* Submit Button */}
-        <button type="submit" disabled={isSubmitting || !canSubmit}>
+        <button type="submit" disabled={isSubmitting || !canSubmit} className="button-primary">
           {isSubmitting ? 'Submitting...' : 'Submit New Resource'}
         </button>
 
-        {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
-        {message && <p style={{ color: 'green', marginTop: '10px' }}>{message}</p>}
+        {error && <p className="error-message">{error}</p>}
+        {message && <p className="success-message">{message}</p>}
       </form>
     </div>
   );

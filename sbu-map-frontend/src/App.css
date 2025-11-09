@@ -1,42 +1,253 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+.app-container {
+  width: 100%;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* --- Header --- */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 1rem;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.app-title {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 2.5em;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.auth-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
+.auth-controls span {
+  color: var(--text-color-light);
+}
+
+/* --- Map --- */
+.map-container {
+  height: 600px;
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-color);
+  margin-bottom: 1.5rem;
+}
+
+/* --- General Card Style --- */
 .card {
-  padding: 2em;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.read-the-docs {
-  color: #888;
+.card h2, .card h3 {
+  margin-top: 0;
+  color: var(--sbu-red);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 0.5rem;
+}
+
+/* --- Search Card --- */
+.search-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 500;
+  font-size: 0.9em;
+  color: var(--text-color-light);
+}
+
+/* --- Results Card --- */
+.results-card h3 {
+  color: var(--sbu-red);
+}
+.results-card p {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+.results-card p b {
+  color: var(--text-color);
+}
+.route-details {
+  border-top: 1px dashed var(--border-color);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+.route-details p {
+  font-size: 1.1em;
+}
+.route-success {
+  color: #4caf50; /* Green for success */
+  font-weight: bold;
+}
+
+/* --- Modern Form Elements (Buttons, Inputs, Selects) --- */
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: var(--sbu-dark-gray);
+  color: var(--text-color);
+  cursor: pointer;
+  transition: all 0.25s;
+}
+button:hover {
+  border-color: var(--sbu-red);
+  background-color: var(--sbu-mid-gray);
+}
+button:disabled {
+  background-color: var(--sbu-dark-gray);
+  color: var(--text-color-light);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Primary "Find" button */
+.button-primary {
+  background-color: var(--sbu-red);
+  color: white;
+  border-color: var(--sbu-red);
+}
+.button-primary:hover {
+  background-color: var(--sbu-red-hover);
+  border-color: var(--sbu-red-hover);
+}
+
+select,
+input[type="text"] {
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  padding: 0.6em 1em;
+  font-size: 1em;
+  font-family: inherit;
+  background-color: var(--sbu-dark-gray);
+  color: var(--text-color);
+  transition: border-color 0.25s;
+}
+select:focus,
+input[type="text"]:focus {
+  outline: none;
+  border-color: var(--sbu-red);
+  box-shadow: 0 0 0 2px var(--sbu-red);
+}
+
+/* --- Submission Form --- */
+.form-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.location-group {
+  background: #1e1e1e;
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.location-group span {
+  color: var(--text-color-light);
+  font-family: monospace;
+}
+.location-group span strong {
+  color: var(--text-color);
+}
+
+/* --- Submissions List --- */
+.submissions-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.submission-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.submission-card h4 {
+  font-size: 1.2em;
+  color: var(--text-color);
+  margin-top: 0;
+  margin-bottom: 1rem;
+  text-transform: capitalize;
+}
+.submission-card p {
+  margin: 0.25rem 0;
+  color: var(--text-color-light);
+}
+.submission-card p b {
+  color: var(--text-color);
+}
+.submission-card .submitted-by {
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 1rem;
+}
+.vote-controls {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+.vote-button {
+  flex-grow: 1;
+}
+.vote-button:hover {
+  background-color: #388e3c; /* Green hover */
+  border-color: #388e3c;
+}
+.vote-button-down:hover {
+  background-color: #d32f2f; /* Red hover */
+  border-color: #d32f2f;
+}
+.vote-total {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: var(--text-color);
+  margin-top: 0.5rem;
+}
+
+/* --- Error/Success Messages --- */
+.error-message {
+  color: #f44336;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid #f44336;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+.success-message {
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid #4caf50;
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-top: 1rem;
 }
