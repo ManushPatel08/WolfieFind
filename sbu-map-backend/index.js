@@ -1,3 +1,4 @@
+/* REPLACE: sbu-map-backend/index.js */
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
@@ -12,21 +13,28 @@ const prisma = new PrismaClient();
 
 // --- Application Logic Constants ---
 const VERIFIED_THRESHOLD = 5;
+
+// --- UPDATED & STANDARDIZED CATEGORIES ---
 const INDOOR_CATEGORIES = [
   'printer', 'drinking_water_filler', 'toilets', 'computer_labs', 'pantry',
   'game_room', 'gender_neutral_bathrooms', 'parking_service_desk',
-  'id_card_desk', 'charging_spots', 'vending_machine' // Added vending_machine
+  'id_card_desk', 'charging_spots', 'vending_machine',
+  'study_room', 'elevator', 'cafeteria', 'information_desk',
+  'book_return', 'quiet_study', 'group_study_room', 'ballroom', 'food'
 ];
 const OUTDOOR_PROXIMITY_METERS = {
   'bench': 20,
-  'bus_stops': 30,
-  'foodtruck_locations': 50,
+  'bus_stops': 30, // Standardized
+  'food_trucks': 50, // Standardized
   'restaurants': 50,
   'gym': 100,
   'photographic_spots': 100,
+  'bike_rack': 30,
+  'garden_area': 50,
+  'study_room': 50, // For outdoor SINC sites
   'default': 30
 };
-// ---
+// --- END UPDATES ---
 
 // Middleware
 app.use(cors());
@@ -96,7 +104,7 @@ app.get('/api/find-closest', async (req, res) => {
     }
 
     const closestResult = findClosest(userLocation, resources);
-    
+
     if (!closestResult.resource) {
       return res.status(404).json({ error: 'No reachable resources found for that category.' });
     }
@@ -131,10 +139,6 @@ app.get('/api/submissions', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch submissions' });
   }
 });
-
-// --- REMOVED /api/get-path ENDPOINT ---
-// The frontend will now call GraphHopper directly.
-
 
 // =================================================
 // --- PROTECTED API ROUTES (LOGIN REQUIRED) ---
@@ -232,7 +236,9 @@ async function verifySubmission(submissionId) {
 {    console.error(`Failed during verification for submission ${submissionId}:`, error);
     if (error.code === 'P2002') {
       console.log('Duplicate resource blocked by database constraint. This is expected.');
-      await nullifyDuplicates(submission);
+      // Still need to nullify other duplicates even if this one failed to create
+      const submission = await prisma.submission.findUnique({ where: { id: submissionId } });
+      if (submission) await nullifyDuplicates(submission);
     }
   }
 }
@@ -265,7 +271,7 @@ app.post('/api/submissions', checkJwt, async (req, res) => {
       if (!parsedBuildingId) {
         return res.status(400).json({ error: 'A building must be selected for this indoor category.' });
       }
-      
+
       const existingResource = await prisma.resource.findFirst({
         where: {
           category: category,

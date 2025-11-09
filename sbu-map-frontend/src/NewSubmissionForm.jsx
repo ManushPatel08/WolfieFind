@@ -1,24 +1,27 @@
-// REPLACE: sbu-map-frontend/src/NewSubmissionForm.jsx
-
+/* REPLACE: sbu-map-frontend/src/NewSubmissionForm.jsx */
 import { useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import axios from 'axios';
 
 const API_URL = `${import.meta.env.VITE_API_URL}/api`;
 
-// --- Category Definitions ---
+// --- UPDATED & STANDARDIZED CATEGORIES ---
 const INDOOR_CATEGORIES = [
   'printer', 'drinking_water_filler', 'toilets', 'computer_labs', 'pantry',
   'game_room', 'gender_neutral_bathrooms', 'parking_service_desk',
-  'id_card_desk', 'charging_spots', 'vending_machine'
+  'id_card_desk', 'charging_spots', 'vending_machine',
+  'study_room', 'elevator', 'cafeteria', 'information_desk',
+  'book_return', 'quiet_study', 'group_study_room', 'ballroom', 'food'
 ];
 const OUTDOOR_CATEGORIES = [
-  'bench', 'bus_stops', 'foodtruck_locations', 'restaurants',
-  'gym', 'photographic_spots'
+  'bench', 'bus_stops', 'food_trucks', 'restaurants',
+  'gym', 'photographic_spots', 'bike_rack', 'garden_area'
 ];
+// --- END UPDATES ---
+
 const ALL_CATEGORIES = [
-  { group: "Indoor", items: INDOOR_CATEGORIES },
-  { group: "Outdoor", items: OUTDOOR_CATEGORIES }
+  { group: "Indoor", items: INDOOR_CATEGORIES.sort() },
+  { group: "Outdoor", items: OUTDOOR_CATEGORIES.sort() }
 ];
 // ---
 
@@ -82,21 +85,16 @@ export function NewSubmissionForm({ location, onUseMyLocation, onSubmissionSucce
       await axios.post(
         `${API_URL}/submissions`,
         submissionData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
+        { headers: { 'Authorization': `Bearer ${token}` } }
       );
 
-      setMessage('Submission successful! Thank you for your contribution.');
+      setMessage('Submission successful! Thank you.');
       setDescription('');
       setBuildingId('');
       setIsSubmitting(false);
+      if (onSubmissionSuccess) onSubmissionSuccess();
 
-      if (onSubmissionSuccess) {
-        onSubmissionSuccess();
-      }
+      setTimeout(() => setMessage(''), 3000);
 
     } catch (err) {
       console.error("Error creating submission:", err);
@@ -111,7 +109,7 @@ export function NewSubmissionForm({ location, onUseMyLocation, onSubmissionSucce
   return (
     <div className="card form-card">
       <h2>Add a New Resource</h2>
-      <p style={{ marginTop: '-1rem', color: 'var(--text-color-light)'}}>
+      <p style={{ marginTop: '-1rem', color: 'var(--text-secondary)', fontSize: '0.9em'}}>
         {isIndoor
           ? "Select an indoor category and the building it's in."
           : "Select an outdoor category and pin its location on the map."}
@@ -121,15 +119,13 @@ export function NewSubmissionForm({ location, onUseMyLocation, onSubmissionSucce
         
         {!isIndoor && (
           <div className="form-group location-group">
-            <label>
-              Selected Location:
-              <span>
-                {location ? <strong> {`${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`}</strong> : ' (Click map to set)'}
-              </span>
-            </label>
+            <span className="location-text">
+              {location ? <>Selected Location: <br/><strong>{`${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`}</strong></> : 'Click map to set location'}
+            </span>
             <button
               type="button"
               onClick={onUseMyLocation}
+              className="btn-secondary"
             >
               Use My Current Location
             </button>
@@ -173,16 +169,15 @@ export function NewSubmissionForm({ location, onUseMyLocation, onSubmissionSucce
             type="text"
             value={description}
             onChange={e => setDescription(e.target.value)}
-            style={{ width: '100%' }}
           />
         </div>
 
-        <button type="submit" disabled={isSubmitting || !canSubmit} className="button-primary">
-          {isSubmitting ? 'Submitting...' : 'Submit New Resource'}
-        </button>
-
         {error && <p className="error-message">{error}</p>}
         {message && <p className="success-message">{message}</p>}
+
+        <button type="submit" disabled={isSubmitting || !canSubmit} className="btn-primary">
+          {isSubmitting ? 'Submitting...' : 'Submit New Resource'}
+        </button>
       </form>
     </div>
   );
