@@ -63,7 +63,7 @@ function App() {
   const [mapCenter, setMapCenter] = useState(STONY_BROOK_CENTER);
   const [mapZoom, setMapZoom] = useState(15);
   const [followUser, setFollowUser] = useState(true);
-  const mapRef = useRef();
+  const mapRef = useRef(null); // will hold the Leaflet map instance via whenCreated
   const [submissionPin, setSubmissionPin] = useState(null);
   const [submissionCount, setSubmissionCount] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState('printer');
@@ -84,7 +84,9 @@ function App() {
   }, [stopTracking, stopCompass]);
 
   const clearRoute = () => {
-    if (routeLayer && mapRef.current) mapRef.current.removeLayer(routeLayer);
+    if (routeLayer && mapRef.current && typeof mapRef.current.removeLayer === 'function') {
+      try { mapRef.current.removeLayer(routeLayer); } catch (e) { console.warn('[App] removeLayer failed', e); }
+    }
     setRouteLayer(null); setRouteDetails(null);
   };
 
@@ -111,8 +113,15 @@ function App() {
   const processRoute = (path) => {
     const latLngs = path.points.coordinates.map(coord => [coord[1], coord[0]]);
     clearRoute();
-    const routeLine = L.polyline(latLngs, { color: '#AE0000', weight: 6, opacity: 0.85, lineJoin: 'round', lineCap: 'round' }).addTo(mapRef.current);
-    if (!followUser) mapRef.current.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+    const routeLine = L.polyline(latLngs, { color: '#AE0000', weight: 6, opacity: 0.85, lineJoin: 'round', lineCap: 'round' });
+    if (mapRef.current && typeof mapRef.current.addLayer === 'function') {
+      routeLine.addTo(mapRef.current);
+      if (!followUser && typeof mapRef.current.fitBounds === 'function') {
+        try { mapRef.current.fitBounds(routeLine.getBounds(), { padding: [50, 50] }); } catch (e) { console.warn('[App] fitBounds failed', e); }
+      }
+    } else {
+      console.warn('[App] map instance not ready; route will not be added to map');
+    }
     setRouteDetails({ distance: (path.distance / 1000).toFixed(2), duration: formatDuration(path.time) });
     setRouteLayer(routeLine);
   };
@@ -169,7 +178,7 @@ function App() {
 
       <div className="main-content">
         <div className="map-column" style={{ position: 'relative' }}>
-          <MapContainer ref={mapRef} center={mapCenter} zoom={mapZoom} className="map-container" zoomControl={true} scrollWheelZoom touchZoom dragging tap minZoom={13} maxZoom={18}>
+          <MapContainer whenCreated={(map) => { mapRef.current = map; }} center={mapCenter} zoom={mapZoom} className="map-container" zoomControl={true} scrollWheelZoom touchZoom dragging tap minZoom={13} maxZoom={18}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
             {followUser && <RecenterMap center={mapCenter} zoom={mapZoom} />}
             <MapClickHandler onMapClick={setSubmissionPin} />
