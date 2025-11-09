@@ -7,6 +7,7 @@ import axios from 'axios';
 import { AddResourceForm } from './AddResourceForm';
 import { CommunitySubmissions } from './CommunitySubmissions';
 import { RotatingUserMarker } from './components/RotatingUserMarker';
+import { LocateMeOverlay } from './components/LocateMeButton';
 import { useDeviceOrientation, requestOrientationPermission } from './hooks/useDeviceOrientation';
 
 //
@@ -97,6 +98,7 @@ function App() {
   const [submissionCount, setSubmissionCount] = useState(0); // To refresh submissions list
   const [selectedCategory, setSelectedCategory] = useState('printer');
   const [orientationPermissionRequested, setOrientationPermissionRequested] = useState(false);
+  const [isLocatingUser, setIsLocatingUser] = useState(false);
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
@@ -247,6 +249,31 @@ function App() {
     );
   };
 
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation not supported by your browser');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+    setIsLocatingUser(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setMyLocation({ lat: latitude, lon: longitude });
+        const latlng = [latitude, longitude];
+        setMapCenter(latlng);
+        if (mapRef.current) mapRef.current.flyTo(latlng, 16);
+        setIsLocatingUser(false);
+      },
+      () => {
+        setError('Unable to retrieve your location. Please allow location access.');
+        setIsLocatingUser(false);
+        setTimeout(() => setError(null), 3000);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   // Mobile-visible handler to request compass/orientation permission explicitly
   const handleEnableCompass = async () => {
     if (!orientationPermissionRequested) {
@@ -274,7 +301,7 @@ function App() {
   }
 
   return (
-    <div className="app-container">
+    <div className="app-layout">
       <header className="app-header">
         <h1 className="app-title">
           <img src={wolfieLogoUrl} alt="WolfieFind Logo" />
@@ -298,12 +325,13 @@ function App() {
       </header>
 
       <div className="main-content">
-        <MapContainer
-          ref={mapRef}
-          center={mapCenter}
-          zoom={15}
-          className="map-container"
-        >
+        <div className="map-column">
+          <MapContainer
+            ref={mapRef}
+            center={mapCenter}
+            zoom={15}
+            className="map-container"
+          >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -348,9 +376,13 @@ function App() {
               <Popup>New Submission Location</Popup>
             </Marker>
           )}
-        </MapContainer>
+          </MapContainer>
 
-        <div className="sidebar">
+          {/* Floating locate button overlay (absolute inside .map-column) */}
+          <LocateMeOverlay onClick={handleLocateMe} isActive={!!myLocation} isLoading={isLocatingUser} />
+        </div>
+
+        <div className="sidebar-column">
           {error && <p className="error-message">{error}</p>}
 
           <div className="card search-card">
