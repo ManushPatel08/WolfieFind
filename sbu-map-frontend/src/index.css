@@ -350,3 +350,82 @@ input[type="text"]:focus {
   padding: .75rem;
   margin-top: 1rem;
 }
+
+/* === Responsive: mobile & small tablets === */
+@media (max-width: 768px) {
+  :root {
+    --spacing: 0.75rem;
+  }
+
+  /* Stack layout: map first, then sidebar */
+  .main-content {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* Make the map much taller on mobile but not full screen so user can access sidebar controls */
+  .map-container {
+    height: 60vh; /* viewport height for mobile */
+    border-radius: 10px;
+    box-shadow: 0 6px 18px #00000066;
+  }
+
+  /* Sidebar becomes full-width panel below the map */
+  .sidebar {
+    min-width: auto;
+    max-height: none;
+    width: 100%;
+    padding: 0.75rem 0;
+    background: transparent;
+    gap: 0.75rem;
+  }
+
+  /* Make cards comfortable for touch */
+  .card {
+    border-radius: 10px;
+    padding: 1rem;
+    margin: 0 0.75rem;
+  }
+
+  /* Buttons larger and full width for easier tapping */
+  button {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+    font-size: 1.05rem;
+  }
+
+  .button-primary, .button-primary:hover {
+    border-radius: 12px;
+  }
+
+  /* Show a dedicated 'Enable Compass' button in header on mobile only */
+  .enable-compass-mobile {
+    display: inline-block;
+    margin-left: 0.5rem;
+    background: var(--sbu-red);
+    color: #fff;
+    border-color: var(--sbu-red);
+    padding: .6em 1em;
+    font-weight: 600;
+  }
+
+  /* Reduce header height & font sizes on mobile */
+  .app-header {
+    padding: 0.75rem 1rem;
+  }
+  .app-title {
+    font-size: 1.4rem;
+  }
+
+  /* Make submission list cards easier to read on small screens */
+  .submission-card h4 {
+    font-size: 1.05rem;
+  }
+
+}
+
+/* Extra small screens - hide enable-compass button on desktop size */
+@media (min-width: 769px) {
+  .enable-compass-mobile { display: none; }
+}
