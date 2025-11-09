@@ -1,14 +1,15 @@
 /* REPLACE: sbu-map-frontend/src/App.jsx */
 import React, { useState, useRef, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import L from 'leaflet'; // Import L
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { useAuth0 } from '@auth0/auth0-react';
 import axios from 'axios';
 import { AddResourceForm } from './AddResourceForm';
 import { CommunitySubmissions } from './CommunitySubmissions';
-import { RotatingUserMarker } from './components/RotatingUserMarker';
-import { LocateMeOverlay } from './components/LocateMeButton';
+import { RotatingUserMarker, CompassDebug } from './components/RotatingUserMarker';
 import { useDeviceOrientation, requestOrientationPermission } from './hooks/useDeviceOrientation';
+import { LocateMeOverlay } from './components/LocateMeButton';
+import './index.css';
 
 //
 // 1. === FIX FOR LOGO PATH ===
@@ -41,7 +42,7 @@ const wolfieIcon = new L.Icon({
 
 
 // API & Map Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 const GRAPHHOPPER_KEY = import.meta.env.VITE_GRAPHHOPPER_API_KEY;
 const GRAPHHOPPER_URL = 'https://graphhopper.com/api/1/route';
 const STONY_BROOK_CENTER = [40.914, -73.123];
@@ -67,26 +68,19 @@ const CATEGORY_LIST = [
 ];
 
 // Map click component to get coordinates
-function MapClickHandler({ onMapClick }) {
-  useMapEvents({
-    click(e) {
-      onMapClick(e.latlng);
-    },
-  });
+function MapClickHandler({ onMapClick }) { useMapEvents({ click(e) { onMapClick(e.latlng); } }); return null; }
+
+function RecenterMap({ center, zoom }) {
+  const map = useMap();
+  useEffect(() => { if (center && zoom) map.setView(center, zoom, { animate: true, duration: 1.2 }); }, [center, zoom, map]);
   return null;
 }
 
 function App() {
-  const {
-    loginWithRedirect,
-    logout,
-    user,
-    isAuthenticated,
-    isLoading: isAuthLoading,
-  } = useAuth0();
-  const [myLocation, setMyLocation] = useState(null);
-  // Compass orientation hook
+  const { loginWithRedirect, logout, user, isAuthenticated, isLoading: isAuthLoading } = useAuth0();
+  // Compass hook
   const { heading, accuracy } = useDeviceOrientation();
+  const [myLocation, setMyLocation] = useState(null);
   const [closestResult, setClosestResult] = useState(null);
   const [routeLayer, setRouteLayer] = useState(null);
   const [routeDetails, setRouteDetails] = useState(null);
@@ -100,11 +94,7 @@ function App() {
   const [orientationPermissionRequested, setOrientationPermissionRequested] = useState(false);
   const [isLocatingUser, setIsLocatingUser] = useState(false);
 
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      loginWithRedirect();
-    }
-  }, [isAuthLoading, isAuthenticated, loginWithRedirect]);
+  useEffect(() => { if (!isAuthLoading && !isAuthenticated) loginWithRedirect(); }, [isAuthLoading, isAuthenticated, loginWithRedirect]);
 
   const clearRoute = () => {
     if (routeLayer && mapRef.current) {
@@ -164,13 +154,7 @@ function App() {
     }
     // Request orientation permission on first find (iOS requires user gesture)
     if (!orientationPermissionRequested) {
-      requestOrientationPermission().then((granted) => {
-        setOrientationPermissionRequested(true);
-        if (!granted) {
-          setError('Compass orientation permission denied. Marker will not rotate.');
-          setTimeout(() => setError(null), 3500);
-        }
-      });
+      requestOrientationPermission().then((granted) => { setOrientationPermissionRequested(true); if (!granted) { setError('Compass orientation permission denied. Marker will not rotate.'); setTimeout(() => setError(null), 3500); } });
     }
     setIsLoading(true);
     setError(null);
@@ -188,7 +172,7 @@ function App() {
           mapRef.current.flyTo(userLatLng, 16);
         }
 
-        axios.get(`${API_BASE_URL}/api/find-closest`, {
+          axios.get(`${API_URL}/find-closest`, {
           params: { category: selectedCategory, lat: latitude, lon: longitude },
         })
           .then(response => {
@@ -196,12 +180,12 @@ function App() {
             setClosestResult(result);
             const resourceLocation = result.location;
 
-            if (resourceLocation && resourceLocation.lat && resourceLocation.lon) {
-              if (mapRef.current) {
-                mapRef.current.flyTo([resourceLocation.lat, resourceLocation.lon], 17);
-              }
-              calculateRoute(userCoords, resourceLocation);
-            } else {
+              if (resourceLocation && resourceLocation.lat && resourceLocation.lon) {
+                if (mapRef.current) {
+                  mapRef.current.flyTo([resourceLocation.lat, resourceLocation.lon], 17);
+                }
+                calculateRoute(userCoords, resourceLocation);
+              } else {
               console.error('Resource found but it has no location data.', result);
               setError(`Found ${selectedCategory} but it has no location data.`);
             }
