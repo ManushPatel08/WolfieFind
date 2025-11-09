@@ -172,7 +172,7 @@ function App() {
           mapRef.current.flyTo(userLatLng, 16);
         }
 
-          axios.get(`${API_URL}/find-closest`, {
+          axios.get(`${API_URL}/api/find-closest`, {
           params: { category: selectedCategory, lat: latitude, lon: longitude },
         })
           .then(response => {
