@@ -5,6 +5,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 import axios from 'axios';
 import { AddResourceForm } from './AddResourceForm';
 import { CommunitySubmissions } from './CommunitySubmissions';
+import wolfieLogoUrl from '/public/wolfie-mascot.png?url';
 
 //
 // 1. === FIX FOR BROKEN MARKER ICONS ===
@@ -30,7 +31,6 @@ L.Icon.Default.mergeOptions({
 //
 // Use your new wolfie-mascot.png file from the /public folder
 //
-const wolfieLogoUrl = '/wolfie-mascot.png';
 const wolfieIcon = new L.Icon({
   iconUrl: wolfieLogoUrl,
   iconSize: [40, 40],
