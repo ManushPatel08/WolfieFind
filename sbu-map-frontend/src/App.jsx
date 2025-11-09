@@ -14,7 +14,6 @@ import { CommunitySubmissions } from './CommunitySubmissions';
 //
 import wolfieLogoUrl from '/wolfie-mascot.png?url';
 
-
 //
 // 2. === FIX FOR WOLFIE LOGO ===
 //
