@@ -119,30 +119,30 @@ async function main() {
     "Melville Library": {
       campus_area: "Academic Mall",
       entrances: [
-        { name: 'Main Entrance (Fountain)', lat: 40.9149, lon: -73.1232 },
-        { name: 'Side Entrance (SAC)', lat: 40.9145, lon: -73.1230 },
+        { name: 'Main Entrance (Fountain)', lat: 40.915312, lon: -73.122398 },
+        { name: 'Side Entrance (SAC)', lat: 40.915312, lon: -73.122398 },
       ],
       resources: [],
     },
     "Student Activities Center (SAC)": {
       campus_area: "Academic Mall",
       entrances: [
-        { name: 'Main Entrance (by Bus Loop)', lat: 40.9139, lon: -73.1230 },
-        { name: 'Auditorium Entrance', lat: 40.9141, lon: -73.1235 },
+        { name: 'Main Entrance (by Bus Loop)', lat: 40.9143278, lon: -73.1242032 },
+        { name: 'Auditorium Entrance', lat: 40.9143278, lon: -73.1242032 },
       ],
       resources: [],
     },
     "Javits Center": {
       campus_area: "Academic Mall",
       entrances: [
-        { name: 'Main Lecture Hall Entrance', lat: 40.9157, lon: -73.1219 }
+        { name: 'Main Lecture Hall Entrance', lat: 40.9129572, lon: -73.1220998 }
       ],
       resources: [],
     },
     "Staller Center": {
       campus_area: "Academic Mall",
       entrances: [
-        { name: 'Main Entrance', lat: 40.9158, lon: -73.1245 }
+        { name: 'Main Entrance', lat: 40.9160069, lon: -73.1215053 }
       ],
       resources: [],
     },
@@ -153,7 +153,7 @@ async function main() {
         // --- THIS IS THE FIX ---
         // Added the main entrance coordinates for the SBU Union
         //
-        { name: 'Main Entrance', lat: 40.91655, lon: -73.12234 }
+        { name: 'Main Entrance', lat: 40.9171235, lon: -73.1225281 }
       ],
       resources: [],
     }
@@ -220,8 +220,8 @@ async function main() {
   outdoorResourcesToCreate.push({
     name: 'ESS Building Bench',
     category: 'bench',
-    lat: 40.9130,
-    lon: -73.1200,
+    lat: 40.91486,
+    lon: -73.1256801,
     description: 'Faces the fountain.',
     building_id: null
   });
