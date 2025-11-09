@@ -26,7 +26,7 @@ const newData = {
   },
   "SACPlaza": {
     "1": { "name": "SAC Plaza Benches", "category": "bench", "latitude": 40.914600, "longitude": -73.123600, "description": "Benches surrounding the fountain area." },
-    "2": { "name": "Food Trucks - SAC Plaza", "category": "food_truck", "latitude": 40.914700, "longitude": -73.123500, "description": "Food trucks located near SAC Plaza." }
+    "2": { "name": "Food Trucks - SAC Plaza", "category": "food_truck", "latitude": 40.914814, "longitude": -73.124363, "description": "Food trucks located near SAC Plaza." }
   },
   "SACIndoors": {
     "1": { "name": "SAC Indoor Printer", "category": "printer", "floor": 1, "description": "Near the West entrance of SAC , up the stairs ." },
