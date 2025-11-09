@@ -329,6 +329,8 @@ app.post('/api/submissions/:id/vote', checkJwt, async (req, res) => {
   const submissionId = parseInt(req.params.id);
   const { voteType } = req.body;
 
+  console.log('Vote request received:', { submissionId, userId, voteType });
+
   if (voteType !== 1 && voteType !== -1) {
     return res.status(400).json({ error: 'Invalid vote type' });
   }
@@ -339,24 +341,43 @@ app.post('/api/submissions/:id/vote', checkJwt, async (req, res) => {
       select: { status: true }
     });
 
+    console.log('Submission found:', submission);
+
     if (!submission || submission.status !== 'pending') {
       return res.status(400).json({ error: 'This submission is not active and can no longer be voted on.' });
     }
 
-    const newVote = await prisma.vote.upsert({
+    // Check if user has already voted
+    const existingVote = await prisma.vote.findFirst({
       where: {
-        submission_id_user_id: {
-          submission_id: submissionId,
-          user_id: userId,
-        },
-      },
-      update: { vote_type: voteType },
-      create: {
         submission_id: submissionId,
         user_id: userId,
-        vote_type: voteType,
-      },
+      }
     });
+
+    console.log('Existing vote:', existingVote);
+
+    let newVote;
+    if (existingVote) {
+      // Update existing vote
+      console.log('Updating existing vote...');
+      newVote = await prisma.vote.update({
+        where: { id: existingVote.id },
+        data: { vote_type: voteType },
+      });
+    } else {
+      // Create new vote
+      console.log('Creating new vote...');
+      newVote = await prisma.vote.create({
+        data: {
+          submission_id: submissionId,
+          user_id: userId,
+          vote_type: voteType,
+        },
+      });
+    }
+
+    console.log('Vote saved:', newVote);
 
     // Check for verification
     const votes = await prisma.vote.findMany({
@@ -364,17 +385,17 @@ app.post('/api/submissions/:id/vote', checkJwt, async (req, res) => {
     });
     const totalVotes = votes.reduce((acc, vote) => acc + vote.vote_type, 0);
 
+    console.log('Total votes:', totalVotes);
+
     if (totalVotes >= VERIFIED_THRESHOLD) {
       verifySubmission(submissionId).catch(console.error);
     }
 
     res.status(201).json(newVote);
   } catch (error) {
-    console.error('Failed to vote:', error);
-    if (error.code === 'P2002') {
-      return res.status(409).json({ error: 'You have already voted on this submission.' });
-    }
-    res.status(500).json({ error: 'Failed to vote' });
+    console.error('Failed to vote - ERROR:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to vote', details: error.message });
   }
 });
 
