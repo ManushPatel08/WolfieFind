@@ -25,14 +25,19 @@ L.Icon.Default.mergeOptions({
 // --- (END OF ICON FIX) ---
 
 
-// SBU Red WolfieFind logo
-const wolfieLogoBase64 = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICA8cGF0aCBkPSJNNTAgMEMyNi44NiAwIDggMTguODYgOCA0MkM4IDY0LjkyIDQxLjg2IDk0LjkgNDYuMTYgOTguODRDNDguMTIgMTAwLjYgNTAuODggMTAwLjYgNTIuODQgOTguODRDNTcuMTQgOTQuOSA5MiA2NC45MiA5MiA0MkM5MiAxOC44NiA3My4xNCAwIDUwIDBaTTUwIDYwQzM4Ljk2IDYwIDMwIDUxLjA0IDMwIDQwQzMwIDI4Ljk2IDM4Ljk2IDIwIDUwIDIwQzYxLjA0IDIwIDcwIDI4Ljk2IDcwIDQwQzcwIDUxLjA0IDYxLjA0IDYwIDUwIDYwWiIgZmlsbD0iI0FFMDAwMCIvPg0KICA8dGV4dCB4PSI1MCIgeT0iNDgiIGZvbnQtZmFtaWx5PSJWZXJkYW5hLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI4IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPlc8L3RleHQ+DQo8L3N2Zz4=";
+//
+// 2. === FIX FOR LOGO ===
+//
+// Use your new wolfie-mascot.png file from the /public folder
+//
+const wolfieLogoUrl = '/wolfie-mascot.png';
 const wolfieIcon = new L.Icon({
-  iconUrl: wolfieLogoBase64,
+  iconUrl: wolfieLogoUrl,
   iconSize: [40, 40],
   iconAnchor: [20, 40],
   popupAnchor: [0, -40],
 });
+// --- (END OF LOGO FIX) ---
 
 // API & Map Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -237,7 +242,8 @@ function App() {
     <div className="app-container">
       <header className="app-header">
         <h1 className="app-title">
-          <img src={wolfieLogoBase64} alt="WolfieFind Logo" />
+          {/* 3. === USE THE NEW LOGO HERE === */}
+          <img src={wolfieLogoUrl} alt="WolfieFind Logo" />
           WolfieFind
         </h1>
         <div className="auth-controls">
@@ -268,7 +274,7 @@ function App() {
           {closestResult && closestResult.location && (
             <Marker
               position={[closestResult.location.lat, closestResult.location.lon]}
-              icon={wolfieIcon}
+              icon={wolfieIcon} // 4. This now uses your PNG file
             >
               <Popup>
                 <b style={{ textTransform: 'capitalize' }}>
@@ -352,6 +358,8 @@ function App() {
                     <b>Walk Distance:</b> {routeDetails.distance} km
                   </p>
                   <p>
+                    {/* FIX: This was <Labels>, changed to </p> 
+                    */}
                     <b>Est. Walk Time:</b> {routeDetails.duration}
                   </p>
                 </div>
