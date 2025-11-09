@@ -54,7 +54,6 @@ model Resource {
 
   // This constraint enforces "1 category per building" for indoor resources.
   // Note: This works because outdoor resources will have building_id = null.
-  @@unique([category, building_id])
 
   @@map("resources")
 }
