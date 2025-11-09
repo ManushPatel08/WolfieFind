@@ -1,21 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
+import L from 'leaflet'; // Import L
 import { useAuth0 } from '@auth0/auth0-react';
 import axios from 'axios';
 import { AddResourceForm } from './AddResourceForm';
 import { CommunitySubmissions } from './CommunitySubmissions';
 
-// SBU Red WolfieFind logo
-const wolfieLogoBase64 = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICA8cGF0aCBkPSJNNTAgMEMyNi44NiAwIDggMTguODYgOCA0MkM4IDY0LjkyIDQxLjg2IDk0LjkgNDYuMTYgOTguODRDNDguMTIgMTAwLjYgNTAuODggMTAwLjYgNTIuODQgOTguODRDNTcuMTQgOTQuOSA5MiA2NC45MiA5MiA0MkM5MiAxOC44NiA3My4xNCAwIDUwIDBaTTUwIDYwQzM4Ljk2IDYwIDMwIDUxLjA0IDMwIDQwQzMwIDI4Ljk2IDM4Ljk2IDIwIDUwIDIwQzYxLjA0IDIwIDcwIDI4Ljk2IDcwIDQwQzcwIDUxLjA0IDYxLjA0IDYwIDUwIDYwWiIgZmlsbD0iI0FFMDAwMCIvPg0KICA8dGV4dCB4PSI1MCIgeT0iNDgiIGZvbnQtZmFtaWx5PSJWZXJkYW5hLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI4IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPlc8L3RleHQ+DQo8L3N2Zz4=";
-const wolfieIcon = new L.Icon({
-  iconUrl: wolfieLogoBase64,
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
-  popupAnchor: [0, -40],
-});
-
-// Default Leaflet icon fix
+//
+// 1. === FIX FOR BROKEN MARKER ICONS ===
+//
+// This code deletes the broken default paths and replaces them
+// with Base64-encoded images so they are bundled with your app.
+//
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACkAAAApCAQAAAACach9AAACMUlEQVR4Ae3ShY7jQBAE0Aoz/f9/HTMzhg1zrdKUrJbdx+Kd2nD8VNudfsL/Th///dyQN2TH6f3y/BGpC379rV+S+qqetBOxImNQXL8JCAr2V4iMQXHGNJxeCfZXhSRBcQMfvkOWUdtfzlLgAENmZDcmo2TVmt8OSM2eXxBp3DjHSMFutqS7SbmemzBiR+xpKCNUIRkdkkYxhAkyGoBvyQFEJEefwSmmvBfJuJ6aKqKWnAkvGZOaZXTUgFqYULWNSHUckZuR1HIIimUExutRxwzOLROIG4vKmCKQt364mIlhSyzAf1m9lHZHJZrlAOMMztRRiKimp/rpdJDc9Awry5xTZCte7FHtuS8wJgeYGrex28xNTd086Dik7vUMscQOa8y4DoGtCCSkAKlNwpgNtphjrC6MIHUkR6YWxxs6Sc5xqn222mmCRFzIt8lEdKx+ikCtg91qS2WpwVfBelJCiQJwvzixfI9cxZQWgiSJelKnwBElKYtDOb2MFbhmUigbReQBV0Cg4+qMXSxXSyGUn4UbF8l+7qdSGnTC0XLCmahIgUHLhLOhpVCtw4CzYXvLQWQbJNmxoCsOKAxSgBJno75avolkRw8iIAFcsdc02e9iyCd8tHwmeSSoKTowIgvscSGZUOA7PuCN5b2BX9mQM7S0wYhMNU74zgsPBj3HU7wguAfnxxjFQGBE6pwN+GjME9zHY7zGp8wVxMShYX9NXvEWD3HbwJf4giO4CFIQxXScH1/TM+04kkBiAAAAAElFTkSuQmCC',
@@ -26,10 +22,19 @@ L.Icon.Default.mergeOptions({
   tooltipAnchor: [16, -28],
   shadowSize: [41, 41],
 });
+// --- (END OF ICON FIX) ---
 
-//
-// FIX: Changed API_URL to API_BASE_URL and adjusted fallback.
-//
+
+// SBU Red WolfieFind logo
+const wolfieLogoBase64 = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPg0KICA8cGF0aCBkPSJNNTAgMEMyNi44NiAwIDggMTguODYgOCA0MkM4IDY0LjkyIDQxLjg2IDk0LjkgNDYuMTYgOTguODRDNDguMTIgMTAwLjYgNTAuODggMTAwLjYgNTIuODQgOTguODRDNTcuMTQgOTQuOSA5MiA2NC45MiA5MiA0MkM5MiAxOC44NiA3My4xNCAwIDUwIDBaTTUwIDYwQzM4Ljk2IDYwIDMwIDUxLjA0IDMwIDQwQzMwIDI4Ljk2IDM4Ljk2IDIwIDUwIDIwQzYxLjA0IDIwIDcwIDI4Ljk2IDcwIDQwQzcwIDUxLjA0IDYxLjA0IDYwIDUwIDYwWiIgZmlsbD0iI0FFMDAwMCIvPg0KICA8dGV4dCB4PSI1MCIgeT0iNDgiIGZvbnQtZmFtaWx5PSJWZXJkYW5hLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI4IiBmb250LXdlaWdodD0iYm9sZCIgZmlsbD0id2hpdGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiPlc8L3RleHQ+DQo8L3N2Zz4=";
+const wolfieIcon = new L.Icon({
+  iconUrl: wolfieLogoBase64,
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -40],
+});
+
+// API & Map Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 const GRAPHHOPPER_KEY = import.meta.env.VITE_GRAPHHOPPER_API_KEY;
 const GRAPHHOPPER_URL = 'https://graphhopper.com/api/1/route';
@@ -163,9 +168,6 @@ function App() {
           mapRef.current.flyTo(userLatLng, 16);
         }
 
-        //
-        // FIX: Add /api prefix to the request URL
-        //
         axios.get(`${API_BASE_URL}/api/find-closest`, {
           params: { category: selectedCategory, lat: latitude, lon: longitude },
         })
@@ -278,7 +280,6 @@ function App() {
                 <span style={{ fontSize: '0.9em', color: '#555' }}>
                   {closestResult.resource.building?.name || 'Outdoor Location'}
                   <br />
-                  {/* FIX: Replaced non-breaking space (U+00a0) with standard space */}
                   ~{closestResult.distance.toFixed(2)} km away
                 </span>
               </Popup>
@@ -342,18 +343,15 @@ function App() {
                 <b>Description:</b> {closestResult.resource.description || 'N/A'}
               </p>
               <p>
-                {/* FIX: Replaced non-breaking space (U+00a0) with standard space */}
                 <b>Distance (as crow flies):</b> {closestResult.distance.toFixed(2)} km (to {closestResult.resource.building ? 'entrance' : 'location'})
               </p>
               {routeDetails && (
                 <div className="route-details">
                   <p className="route-success">Route path is now shown on the map!</p>
                   <p>
-                    {/* FIX: Replaced non-breaking space (U+00a0) with standard space */}
                     <b>Walk Distance:</b> {routeDetails.distance} km
                   </p>
                   <p>
-                    {/* FIX: Replaced non-breaking space (U+00a0) with standard space */}
                     <b>Est. Walk Time:</b> {routeDetails.duration}
                   </p>
                 </div>
